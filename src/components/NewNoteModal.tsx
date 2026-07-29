@@ -203,7 +203,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
             onClick={handleAiRefine}
             disabled={isGeneratingAi}
             className="p-2 text-[#006d41] hover:bg-[#95f7bb]/30 rounded-full transition-colors"
-            title="AI 续写与润色"
+            title="AI 润色文章"
           >
             {isGeneratingAi ? (
               <Loader2 className="w-5 h-5 animate-spin" />
