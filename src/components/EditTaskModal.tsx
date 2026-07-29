@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TaskItem } from '../types';
-import { X, Calendar, ChevronRight, Loader2, Check, Trash2, Plus, Tag } from 'lucide-react';
+import { X, Calendar, ChevronRight, Loader2, Check, Trash2, Plus, Tag, Star, XOctagon } from 'lucide-react';
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -24,6 +24,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [newTagText, setNewTagText] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
+  const [priority, setPriority] = useState<'normal' | 'important' | 'urgent'>('normal');
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -40,12 +41,14 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setDetails(task.details || '');
       setSubItems(task.subItems || []);
       setSelectedTags(task.tags || []);
+      setPriority(task.priority || 'normal');
     } else {
       setTitle('');
       setDeadline('今天, 17:00');
       setDetails('');
       setSubItems([]);
       setSelectedTags([]);
+      setPriority('normal');
     }
     const now = new Date();
     const year = now.getFullYear();
@@ -117,6 +120,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         accentColor: task ? task.accentColor : 'yellow',
         completed: task ? task.completed : false,
         tags: task ? task.tags : (selectedTags.length > 0 ? selectedTags : ['#工作']),
+        priority: priority,
         createdAt: task ? task.createdAt : new Date().toISOString().split('T')[0],
       };
 
@@ -275,6 +279,37 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   className="w-full bg-transparent border-none text-xs font-semibold text-[#1b1c1a] focus:outline-none focus:ring-0 cursor-pointer"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* 优先级 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-semibold text-[#444748] ml-1 uppercase tracking-wider">
+              优先级
+            </label>
+            <div className="flex gap-2">
+              {([
+                ['normal', '普通', '#747878'],
+                ['important', '重要', '#745b00'],
+                ['urgent', '紧急', '#ba1a1a'],
+              ] as const).map(([val, label, color]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setPriority(val)}
+                  className={`flex-1 h-10 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                    priority === val
+                      ? 'text-white shadow-sm'
+                      : 'bg-[#f4f4f0] text-[#444748] hover:bg-[#e9e8e4]'
+                  }`}
+                  style={priority === val ? { backgroundColor: color } : {}}
+                >
+                  {val === 'urgent' ? <XOctagon className="w-3.5 h-3.5" />
+                    : val === 'important' ? <Star className="w-3.5 h-3.5" />
+                    : <Check className="w-3.5 h-3.5" />}
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 

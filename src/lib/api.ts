@@ -186,6 +186,7 @@ function rowToTask(row: any): TaskItem {
     badge: row.badge || '',
     badgeType: row.badge_type || 'normal',
     accentColor: row.accent_color || 'grey',
+    priority: row.priority || 'normal',
     completed: row.completed || false,
     tags: Array.isArray(row.tags) ? row.tags : [],
     createdAt: row.created_at?.slice(0, 10) || '',
@@ -202,6 +203,7 @@ function taskToRow(task: TaskItem): any {
     badge: task.badge,
     badge_type: task.badgeType,
     accent_color: task.accentColor,
+    priority: task.priority || 'normal',
     completed: task.completed,
     tags: task.tags || [],
   };

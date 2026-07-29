@@ -11,6 +11,7 @@ export interface TaskItem {
   accentColor: 'red' | 'yellow' | 'green' | 'grey';
   completed: boolean;
   tags?: string[];
+  priority?: 'normal' | 'important' | 'urgent';
   createdAt: string;
 }
 
