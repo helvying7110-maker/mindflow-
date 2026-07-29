@@ -223,9 +223,11 @@ function AppContent() {
   };
 
   const getTabTitle = () => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
     switch (activeTab) {
       case "home": return "MindFlow";
-      case "trace": return "追踪";
+      case "trace": return `追踪 · ${todayStr}`;
       case "structure": return "库";
       default: return "MindFlow";
     }
