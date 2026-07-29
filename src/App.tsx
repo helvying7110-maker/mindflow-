@@ -13,6 +13,14 @@ import {
   INITIAL_COLLECTIONS,
   INITIAL_TAGS,
 } from "./data/initialData";
+import {
+  fetchNotes, saveNote, deleteNote,
+  fetchTasks, saveTask, deleteTask,
+  fetchFocusChecks, saveFocusChecks,
+  fetchProjectSummary, saveProjectSummary,
+  fetchCollections, saveCollection,
+  fetchTags, saveTag,
+} from "./lib/api";
 import { NavigationShell } from "./components/NavigationShell";
 import { HomeView } from "./components/HomeView";
 import { TraceView } from "./components/TraceView";
@@ -24,7 +32,6 @@ import { SearchModal } from "./components/SearchModal";
 import { NoteTypeSelectorModal } from "./components/NoteTypeSelectorModal";
 import { TodayFocusModal } from "./components/TodayFocusModal";
 import { ProjectListModal } from "./components/ProjectListModal";
-import { dataService } from "./lib/data-service";
 
 function LoadingScreen() {
   return (
@@ -48,168 +55,167 @@ export default function App() {
 function AppContent() {
   const { user, loading } = useAuth();
 
-  // ====== 所有 hooks 必须在条件 return 之前声明（React 规则） ======
+  // ====== 状态：初始用本地数据，用户登录后从 Supabase 拉取 ======
   const [activeTab, setActiveTab] = useState<TabType>("home");
-  const [tasks, setTasks] = useState<TaskItem[]>(() => {
-    const saved = localStorage.getItem("mindflow_tasks");
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
-  });
-  const [notes, setNotes] = useState<NoteItem[]>(() => {
-    const saved = localStorage.getItem("mindflow_notes");
-    return saved ? JSON.parse(saved) : INITIAL_NOTES;
-  });
+  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
   const [focusChecks, setFocusChecks] = useState<FocusCheckItem[]>(INITIAL_FOCUS_CHECKS);
-  const [projectSummary, setProjectSummary] = useState<ProjectSummary>(() => {
-    const saved = localStorage.getItem("mindflow_project");
-    return saved ? JSON.parse(saved) : INITIAL_PROJECT;
-  });
+  const [projectSummary, setProjectSummary] = useState<ProjectSummary>(INITIAL_PROJECT);
   const [insightQuote, setInsightQuote] = useState<InsightQuote>(INITIAL_INSIGHT);
   const [collections, setCollections] = useState<CollectionItem[]>(INITIAL_COLLECTIONS);
   const [tags, setTags] = useState<TagItem[]>(INITIAL_TAGS);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // UI 状态
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(false);
   const [selectedNoteForView, setSelectedNoteForView] = useState<NoteItem | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
-
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isTodayFocusOpen, setIsTodayFocusOpen] = useState(false);
   const [isProjectListOpen, setIsProjectListOpen] = useState(false);
 
+  // ====== 用户登录后从 Supabase 加载所有数据 ======
   useEffect(() => {
-    localStorage.setItem("mindflow_tasks", JSON.stringify(tasks));
-    if (user) dataService.tasks.sync(user.id, tasks).catch(() => {});
-  }, [tasks, user]);
-  useEffect(() => {
-    localStorage.setItem("mindflow_notes", JSON.stringify(notes));
-    if (user) dataService.notes.sync(user.id, notes).catch(() => {});
-  }, [notes, user]);
-
-  useEffect(() => {
-    if (!user) return;
+    if (!user) { setDataLoaded(false); return; }
     let cancelled = false;
     (async () => {
       try {
-        const uid = user.id;
-        const [sn, st, sc, stg] = await Promise.all([
-          dataService.notes.fetch(uid),
-          dataService.tasks.fetch(uid),
-          dataService.collections.fetch(uid),
-          dataService.tags.fetch(uid),
+        const [n, t, fc, ps, c, tg] = await Promise.all([
+          fetchNotes(),
+          fetchTasks(),
+          fetchFocusChecks(),
+          fetchProjectSummary(),
+          fetchCollections(),
+          fetchTags(),
         ]);
         if (cancelled) return;
-        if (sn.length > 0) setNotes(sn);
-        else await dataService.notes.migrate(uid);
-        if (st.length > 0) setTasks(st);
-        else await dataService.tasks.migrate(uid);
-        if (sc.length > 0) setCollections(sc);
-        if (stg.length > 0) setTags(stg);
-        const sp = await dataService.projectSummary.fetch(uid);
-        if (!cancelled && sp) setProjectSummary(sp);
+        // 只有当云端有数据时才覆盖本地默认值
+        if (n.length > 0) setNotes(n);
+        if (t.length > 0) setTasks(t);
+        if (fc.length > 0) setFocusChecks(fc);
+        if (ps) setProjectSummary(ps);
+        if (c.length > 0) setCollections(c);
+        if (tg.length > 0) setTags(tg);
+        setDataLoaded(true);
       } catch (e) {
-        console.error("Supabase initial sync error, staying with localStorage", e);
+        console.error("Supabase load error:", e);
+        setDataLoaded(true);
       }
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
-  // ====== 根据 auth 状态决定显示什么 ======
+
+  // ====== 根据 auth 状态决定显示 ======
   if (loading) return <LoadingScreen />;
   if (!user) return <LoginPage />;
+  if (!dataLoaded) return <LoadingScreen />;
 
-  // ====== 以下是已登录用户的 handlers 和 UI ======
-  const handleToggleFocus = (id: string) => {
-    setFocusChecks((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
-    );
-  };
-
-  const handleToggleTaskComplete = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
-  };
-
-  const handleDelayTaskToTomorrow = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          return {
-            ...t,
-            deadline: "明天, 17:00",
-            badge: "> 24小时",
-            badgeType: "upcoming",
-            accentColor: "green",
-          };
-        }
-        return t;
-      })
-    );
-  };
-
-  const handleSaveTask = (updatedTask: TaskItem) => {
+  // ====== Handler：任务 ======
+  const handleToggleTaskComplete = async (id: string) => {
     setTasks((prev) => {
-      const exists = prev.some((t) => t.id === updatedTask.id);
-      if (exists) {
-        return prev.map((t) => (t.id === updatedTask.id ? updatedTask : t));
-      }
-      return [updatedTask, ...prev];
+      const updated = prev.map((t) =>
+        t.id === id ? { ...t, completed: !t.completed } : t
+      );
+      const target = updated.find(t => t.id === id);
+      if (target) saveTask(target);
+      return updated;
     });
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleDelayTaskToTomorrow = async (id: string) => {
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === id) {
+          const newTask = {
+            ...t, deadline: "明天, 17:00", badge: "> 24小时",
+            badgeType: "upcoming" as const, accentColor: "green" as TaskItem["accentColor"],
+          };
+          saveTask(newTask);
+          return newTask;
+        }
+        return t;
+      });
+      return updated;
+    });
   };
 
-  const handleAddTasksFromProject = (taskTitles: string[], projectTitle: string) => {
-    const formattedTitle = projectTitle.startsWith("项目")
-      ? projectTitle
-      : `项目：${projectTitle}`;
+  const handleSaveTask = async (updatedTask: TaskItem) => {
+    setTasks((prev) => {
+      const exists = prev.some((t) => t.id === updatedTask.id);
+      const next = exists
+        ? prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+        : [updatedTask, ...prev];
+      return next;
+    });
+    saveTask(updatedTask);
+  };
 
-    const singleProjectTask: TaskItem = {
+  const handleDeleteTask = async (id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    deleteTask(id);
+  };
+
+  // ====== Handler：笔记 ======
+  const handleSaveNote = async (newNote: NoteItem) => {
+    setNotes((prev) => [newNote, ...prev]);
+    saveNote(newNote);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    deleteNote(id);
+  };
+
+  // ====== Handler：今日重点 ======
+  const handleToggleFocus = (id: string) => {
+    setFocusChecks((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, completed: !item.completed } : item
+      );
+      saveFocusChecks(updated);
+      return updated;
+    });
+  };
+
+  // ====== Handler：项目清单 ======
+  const handleAddTasksFromProject = async (taskTitles: string[], projectTitle: string) => {
+    const formattedTitle = projectTitle.startsWith("项目") ? projectTitle : `项目：${projectTitle}`;
+    const newTask: TaskItem = {
       id: `task-proj-${Date.now()}`,
       title: formattedTitle,
       details: taskTitles.length > 0 ? taskTitles.join(" · ") : "包含项目清单",
       subItems: taskTitles,
-      deadline: "剩余 3 天",
-      badge: "剩余 3 天",
-      badgeType: "upcoming",
-      accentColor: "yellow",
-      completed: false,
-      tags: ["项目清单"],
-      createdAt: "刚刚",
+      deadline: "剩余 3 天", badge: "剩余 3 天",
+      badgeType: "upcoming", accentColor: "yellow",
+      completed: false, tags: ["#项目清单"], createdAt: "刚刚",
     };
-
-    setTasks((prev) => [singleProjectTask, ...prev]);
+    setTasks((prev) => [newTask, ...prev]);
+    saveTask(newTask);
   };
 
-  const handleSaveNote = (newNote: NoteItem) => {
-    setNotes((prev) => [newNote, ...prev]);
-  };
-
-  const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-  };
-
-  const handleAddTag = (tagName: string) => {
+  // ====== Handler：合集 & 标签 ======
+  const handleAddTag = async (tagName: string) => {
     const newTag: TagItem = {
-      id: "tag-",
+      id: `tag-${Date.now()}`,
       name: tagName,
       colorDot: "bg-[#006d41]",
     };
     setTags((prev) => [...prev, newTag]);
+    saveTag(newTag);
   };
 
-  const handleAddCollection = (colName: string) => {
+  const handleAddCollection = async (colName: string) => {
     const newCol: CollectionItem = {
-      id: "col-",
-      name: colName,
-      count: 0,
+      id: `col-${Date.now()}`,
+      name: colName, count: 0,
       iconName: "BookOpen",
       colorClass: "bg-[#e3e2df] text-[#1b1c1a]",
     };
     setCollections((prev) => [...prev, newCol]);
+    saveCollection(newCol);
   };
 
   const handleGenerateAiSpark = async () => {
@@ -235,8 +241,7 @@ function AppContent() {
 
   return (
     <NavigationShell
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
+      activeTab={activeTab} setActiveTab={setActiveTab}
       onOpenNewNote={() => setIsNewNoteOpen(true)}
       onOpenNewTask={() => { setEditingTask(null); setIsEditTaskOpen(true); }}
       onOpenTypeSelector={() => setIsTypeSelectorOpen(true)}
@@ -285,10 +290,16 @@ function AppContent() {
         onSelectProjectList={() => setIsProjectListOpen(true)}
       />
       <TodayFocusModal isOpen={isTodayFocusOpen} onClose={() => setIsTodayFocusOpen(false)}
-        focusChecks={focusChecks} onSaveFocusChecks={(updated) => setFocusChecks(updated)}
+        focusChecks={focusChecks} onSaveFocusChecks={async (updated) => {
+          setFocusChecks(updated);
+          saveFocusChecks(updated);
+        }}
       />
       <ProjectListModal isOpen={isProjectListOpen} onClose={() => setIsProjectListOpen(false)}
-        projectSummary={projectSummary} onSaveProject={(updated) => setProjectSummary(updated)}
+        projectSummary={projectSummary} onSaveProject={async (updated) => {
+          setProjectSummary(updated);
+          saveProjectSummary(updated);
+        }}
         onAddTasksFromProject={handleAddTasksFromProject}
       />
       <EditTaskModal isOpen={isEditTaskOpen} onClose={() => { setIsEditTaskOpen(false); setEditingTask(null); }}
