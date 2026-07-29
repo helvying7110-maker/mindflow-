@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { NoteItem, FocusCheckItem, InsightQuote, ProjectSummary } from '../types';
-import { ChevronDown, Zap, CheckCircle2, Circle, MoreHorizontal, Sparkles, RefreshCw, Plus, Pencil } from 'lucide-react';
+import { NoteItem, TaskItem, FocusCheckItem, InsightQuote, ProjectSummary, CollectionItem } from '../types';
+import { ChevronDown, Zap, CheckCircle2, Circle, MoreHorizontal, Sparkles, RefreshCw, Plus, Pencil, FileText, ListChecks, Layers, AlertCircle } from 'lucide-react';
 
 interface HomeViewProps {
   notes: NoteItem[];
+  tasks?: TaskItem[];
+  collections?: CollectionItem[];
   focusChecks: FocusCheckItem[];
   insightQuote: InsightQuote;
   projectSummary: ProjectSummary;
@@ -17,6 +19,8 @@ interface HomeViewProps {
 
 export const HomeView: React.FC<HomeViewProps> = ({
   notes,
+  tasks = [],
+  collections = [],
   focusChecks,
   insightQuote,
   projectSummary,

@@ -251,7 +251,7 @@ function AppContent() {
       {activeTab === "home" && (
         <HomeView
           notes={notes} focusChecks={focusChecks} insightQuote={insightQuote}
-          projectSummary={projectSummary}
+          projectSummary={projectSummary} tasks={tasks} collections={collections}
           onToggleFocus={handleToggleFocus}
           onSelectNote={(note) => setSelectedNoteForView(note)}
           onGenerateAiSpark={handleGenerateAiSpark} isAiGenerating={isAiGenerating}
@@ -296,7 +296,7 @@ function AppContent() {
         }}
       />
       <ProjectListModal isOpen={isProjectListOpen} onClose={() => setIsProjectListOpen(false)}
-        projectSummary={projectSummary} onSaveProject={async (updated) => {
+        projectSummary={projectSummary} tasks={tasks} collections={collections} onSaveProject={async (updated) => {
           setProjectSummary(updated);
           saveProjectSummary(updated);
         }}
