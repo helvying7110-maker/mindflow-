@@ -158,14 +158,15 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: title || content,
-          mode: 'inspire',
+          content: content,
+          mode: 'polish',
         }),
       });
       const data = await res.json();
       if (data.success && data.data) {
         if (data.data.title && !title) setTitle(data.data.title);
         if (data.data.content) {
-          setContent((prev) => (prev ? `${prev}\n\n【AI 灵感拓展】\n${data.data.content}` : data.data.content));
+          setContent(data.data.content);
         }
       }
     } catch (e) {
@@ -303,7 +304,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
               className="flex items-center gap-1 text-[#007346] font-medium hover:underline"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>AI 灵感生成</span>
+              <span>AI 润色文章</span>
             </button>
           </div>
         </div>

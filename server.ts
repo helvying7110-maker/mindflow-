@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import { createServer as createViteServer } from "vite";
 
@@ -44,28 +43,45 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
-// Initialize Gemini AI Client
-const getAi = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
+// ====== AI 配置：通义千问 (阿里云百炼) ======
+const QWEN_API_KEY = process.env.QWEN_API_KEY || "";
+const QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+
+async function callQwen(prompt: string) {
+  const response = await fetch(`${QWEN_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${QWEN_API_KEY}`,
     },
+    body: JSON.stringify({
+      model: "qwen-turbo",  // 免费模型
+      messages: [
+        { role: "system", content: "你是 MindFlow 应用的 AI 创作助手，请始终以 JSON 格式输出，不要加 markdown 代码块标记。" },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 2048,
+      temperature: 0.8,
+    }),
   });
-};
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Qwen API error (${response.status}): ${errText}`);
+  }
+
+  const result = await response.json();
+  return result.choices[0].message.content;
+}
 
 // AI Endpoint: Generate Inspiration Note or Refine Thoughts
 app.post("/api/ai/inspire", async (req, res) => {
   try {
     const { topic, mode } = req.body;
-    const ai = getAi();
-    if (!ai) {
+
+    if (!QWEN_API_KEY) {
       return res.status(500).json({
-        error: "GEMINI_API_KEY is not configured.",
+        error: "QWEN_API_KEY is not configured.",
       });
     }
 
@@ -74,23 +90,22 @@ app.post("/api/ai/inspire", async (req, res) => {
       prompt = `请为极简思考应用 MindFlow 生成一句深刻而精炼的心流/认知心理学语录，包含作者姓名。输出 JSON 格式: {"quote": "语录内容...", "author": "作者"}`;
     } else if (mode === "task_breakdown") {
       prompt = `请针对任务"${topic || "项目规划"}"，生成3条精炼可执行的具体步骤。输出 JSON 格式: {"steps": ["步骤1", "步骤2", "步骤3"]}`;
+    } else if (mode === "polish") {
+      const userContent = (req.body.content as string) || "";
+      prompt = `请帮我润色和拓展以下笔记内容，保持原意的基础上让语言更加优美流畅、富有深度。输出 JSON 格式: {"title": "润色后的标题", "tag": "灵感", "excerpt": "简短摘要", "content": "润色后的完整笔记"}
+
+原始内容：
+标题：${topic || ""}
+正文：${userContent}`;
     } else {
       prompt = `请围绕主题"${topic || "极简思考与深度专注"}"生成一篇充满审美美感与建筑/心理学哲理的短笔记。输出 JSON 格式: {"title": "标题", "tag": "灵感", "excerpt": "简短一两句摘要...", "content": "详细笔记正文..."}`;
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const resultText = response.text || "{}";
+    const resultText = await callQwen(prompt);
     const data = JSON.parse(resultText);
     return res.json({ success: true, data });
   } catch (err: any) {
-    console.error("Gemini API Error:", err);
+    console.error("Qwen API Error:", err);
     return res.status(500).json({ error: err.message || "AI generation failed" });
   }
 });

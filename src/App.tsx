@@ -265,7 +265,7 @@ function AppContent() {
 
       {activeTab === "structure" && (
         <StructureView
-          collections={collections} tags={tags} notes={notes}
+          collections={collections} tags={tags} notes={notes} tasks={tasks}
           onSelectNote={(noteOrId) => {
             if (typeof noteOrId === "string") {
               const found = notes.find((n) => n.id === noteOrId);

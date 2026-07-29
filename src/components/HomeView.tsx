@@ -41,15 +41,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Pull down / Capture Inspiration Prompt */}
-      <div className="flex flex-col items-center justify-center pt-1 pb-3 text-[#747878] group cursor-pointer" onClick={onGenerateAiSpark}>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-[#444748] tracking-wider mb-1 group-hover:text-[#000000] transition-colors">
-          <ChevronDown className="w-4 h-4 animate-bounce text-[#747878]" />
-          <span>{isAiGenerating ? "AI 正在捕捉灵感..." : "下拉捕捉灵感 / 点击生成 AI 灵感"}</span>
-          <Sparkles className="w-3.5 h-3.5 text-[#006d41] ml-0.5" />
-        </div>
-      </div>
-
       {/* Today's Focus Card (今日重点) */}
       <div className="bg-white rounded-3xl p-5 shadow-sm border border-[#efeeea]">
         <div className="flex items-center justify-between mb-4">

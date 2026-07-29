@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CollectionItem, TagItem, NoteItem } from '../types';
+import { CollectionItem, TagItem, NoteItem, TaskItem } from '../types';
 import {
   Search,
   LayoutGrid,
@@ -17,6 +17,9 @@ import {
   Calendar,
   Folder,
   Tag,
+  Clock,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 import { GalleryModal } from './GalleryModal';
 
@@ -24,6 +27,7 @@ interface StructureViewProps {
   collections: CollectionItem[];
   tags: TagItem[];
   notes?: NoteItem[];
+  tasks?: TaskItem[];
   onSelectCollection?: (name: string) => void;
   onAddTag: (tagName: string) => void;
   onAddCollection: (name: string) => void;
@@ -35,6 +39,7 @@ export const StructureView: React.FC<StructureViewProps> = ({
   collections,
   tags,
   notes = [],
+  tasks = [],
   onSelectCollection,
   onAddTag,
   onAddCollection,
@@ -301,23 +306,32 @@ export const StructureView: React.FC<StructureViewProps> = ({
     );
   }
 
-  // Render Tag Notes Detail Page
+  // Render Tag Notes + Tasks Detail Page
   if (selectedTag) {
-    const tagNotes = notes.filter((n) => {
-      const cleanTag = selectedTag.replace(/^#/, '').toLowerCase();
-      const matchTag =
-        (n.tag && n.tag.toLowerCase().includes(cleanTag)) ||
-        (n.collection && n.collection.toLowerCase().includes(cleanTag));
-      if (!matchTag) return false;
+    const cleanTag = selectedTag.replace(/^#/, '').toLowerCase();
 
+    // 匹配笔记
+    const tagNotes = notes.filter((n) => {
+      const nTag = (n.tag || '').toLowerCase();
+      const nCol = (n.collection || '').toLowerCase();
+      const matchTag = nTag.includes(cleanTag) || nCol.includes(cleanTag);
+      if (!matchTag) return false;
       if (!subSearchQuery.trim()) return true;
       const q = subSearchQuery.toLowerCase();
-      return (
-        n.title.toLowerCase().includes(q) ||
-        n.excerpt.toLowerCase().includes(q) ||
-        n.content.toLowerCase().includes(q)
-      );
+      return n.title.toLowerCase().includes(q) || n.excerpt.toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
     });
+
+    // 匹配任务
+    const tagTasks = tasks.filter((t) => {
+      const tTags = (t.tags || []).map((tg) => tg.replace(/^#/, '').toLowerCase());
+      const matchTag = tTags.some((tg) => tg.includes(cleanTag));
+      if (!matchTag) return false;
+      if (!subSearchQuery.trim()) return true;
+      const q = subSearchQuery.toLowerCase();
+      return t.title.toLowerCase().includes(q) || (t.details || '').toLowerCase().includes(q);
+    });
+
+    const totalCount = tagNotes.length + tagTasks.length;
 
     return (
       <div className="space-y-5 animate-fadeIn pb-8">
@@ -332,21 +346,44 @@ export const StructureView: React.FC<StructureViewProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
-            <div className="w-10 h-10 rounded-2xl bg-[#efeeea] text-[#1b1c1a] flex items-center justify-center">
-              <Tag className="w-5 h-5 text-[#006d41]" />
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#e8f8ee] text-[#1b1c1a] flex items-center justify-center">
+                <Tag className="w-5 h-5 text-[#006d41]" />
+              </div>
+              <div>
+                <h1 className="font-bold text-xl text-[#1b1c1a]">{selectedTag}</h1>
+                <p className="text-xs text-[#747878] mt-0.5">
+                  笔记 · 任务 · 共 {totalCount} 项
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-xl text-[#1b1c1a]">{selectedTag}</h1>
-              <p className="text-xs text-[#747878]">包含此标签的笔记 · 共 {tagNotes.length} 篇</p>
-            </div>
+
+            <span className="px-3 py-1 rounded-full bg-[#e8f8ee] text-[#006d41] text-xs font-bold">
+              {totalCount} 项
+            </span>
+          </div>
+
+          {/* Sub Search Bar */}
+          <div className="relative pt-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-5 text-[#747878]" />
+            <input
+              type="text"
+              value={subSearchQuery}
+              onChange={(e) => setSubSearchQuery(e.target.value)}
+              placeholder={`搜索「${selectedTag}」标签下的内容...`}
+              className="w-full h-10 pl-10 pr-4 bg-[#f4f4f0] border-none rounded-xl text-xs font-medium text-[#1b1c1a] focus:ring-1 focus:ring-[#1b1c1a]/20 placeholder:text-[#747878]"
+            />
           </div>
         </div>
 
-        {/* Tag Notes List */}
-        <div className="space-y-3">
-          {tagNotes.length > 0 ? (
-            tagNotes.map((note) => (
+        {/* 笔记列表 */}
+        {tagNotes.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#747878] px-1">
+              📝 笔记 ({tagNotes.length})
+            </h2>
+            {tagNotes.map((note) => (
               <div
                 key={note.id}
                 onClick={() => onSelectNote && onSelectNote(note)}
@@ -365,13 +402,61 @@ export const StructureView: React.FC<StructureViewProps> = ({
                   {note.excerpt || note.content}
                 </p>
               </div>
-            ))
-          ) : (
-            <div className="bg-white rounded-3xl border border-[#efeeea] p-8 text-center space-y-2">
-              <p className="font-bold text-sm text-[#1b1c1a]">未找到包含该标签的笔记</p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {/* 任务列表 */}
+        {tagTasks.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#747878] px-1">
+              ✅ 任务 ({tagTasks.length})
+            </h2>
+            {tagTasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-white rounded-3xl p-5 shadow-sm border border-[#efeeea] hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] space-y-2"
+              >
+                <div className="flex items-center gap-2.5">
+                  <button className="text-[#747878]">
+                    {task.completed ? (
+                      <CheckCircle2 className="w-5 h-5 text-[#006d41] fill-[#95f7bb]/30" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-[#c4c7c7]" />
+                    )}
+                  </button>
+                  <h3 className={`font-bold text-base flex-1 ${task.completed ? 'line-through text-[#858383]' : 'text-[#1b1c1a]'}`}>
+                    {task.title}
+                  </h3>
+                </div>
+                {task.details && (
+                  <p className="text-xs text-[#747878] pl-7 line-clamp-2 leading-relaxed">
+                    {task.details}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 pl-7">
+                  <span className="flex items-center gap-1 text-[11px] text-[#006d41] font-medium">
+                    <Clock className="w-3 h-3" />
+                    {task.deadline}
+                  </span>
+                  {task.tags && task.tags.map((tg) => (
+                    <span key={tg} className="px-2 py-0.5 rounded-full bg-[#efeeea] text-[#444748] text-[10px] font-bold">
+                      {tg}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 空状态 */}
+        {totalCount === 0 && (
+          <div className="bg-white rounded-3xl border border-[#efeeea] p-8 text-center space-y-2">
+            <p className="font-bold text-sm text-[#1b1c1a]">未找到包含该标签的内容</p>
+            <p className="text-xs text-[#747878]">为该标签创建笔记或任务后，内容将在此集中展示。</p>
+          </div>
+        )}
       </div>
     );
   }

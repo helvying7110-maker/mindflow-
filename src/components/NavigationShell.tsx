@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TabType } from '../types';
-import { Edit3, History, Box, Plus, Menu, Search } from 'lucide-react';
+import { Edit3, History, Box, Plus, Menu, Search, X, LogOut, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 interface NavigationShellProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -21,12 +22,73 @@ export const NavigationShell: React.FC<NavigationShellProps> = ({
   children,
   onOpenSearch,
 }) => {
+  const { signOut, displayPhone } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#1b1c1a] flex flex-col justify-between max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-[#e3e2df]/40">
+      {/* 侧边菜单遮罩 */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      {/* 侧边菜单抽屉 */}
+      <div
+        className={`fixed top-0 left-0 z-50 h-full w-72 bg-[#faf9f5] shadow-2xl transition-transform duration-300 ease-out ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* 抽屉顶部 */}
+        <div className="flex items-center justify-between px-5 h-16 border-b border-[#efeeea]">
+          <h2 className="text-lg font-bold text-[#1b1c1a]">菜单</h2>
+          <button
+            onClick={() => setMenuOpen(false)}
+            className="p-2 text-[#747878] hover:bg-[#efeeea] rounded-full transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* 用户信息 */}
+        <div className="px-5 py-4 border-b border-[#efeeea]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#e8f8ee] flex items-center justify-center">
+              <User className="w-5 h-5 text-[#006d41]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#1b1c1a]">
+                {displayPhone || '已登录用户'}
+              </p>
+              <p className="text-xs text-[#747878]">MindFlow 账号</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 菜单项 */}
+        <div className="px-3 py-3">
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              signOut();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#ba1a1a] hover:bg-[#ffdad6] transition-colors active:scale-[0.98]"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>退出登录</span>
+          </button>
+        </div>
+      </div>
+
       {/* Top Header Bar */}
       <header className="w-full sticky top-0 z-30 bg-[#faf9f5]/90 backdrop-blur-md flex justify-between items-center px-5 h-16 border-b border-[#efeeea]">
         <div className="flex items-center gap-3">
-          <button className="p-2 -ml-2 text-[#1b1c1a] hover:bg-[#efeeea] rounded-full transition-colors active:scale-95">
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="p-2 -ml-2 text-[#1b1c1a] hover:bg-[#efeeea] rounded-full transition-colors active:scale-95"
+          >
             <Menu className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-semibold text-[#1b1c1a] tracking-tight">{title}</h1>

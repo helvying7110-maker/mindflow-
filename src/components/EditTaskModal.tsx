@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TaskItem } from '../types';
-import { X, Calendar, ChevronRight, Loader2, Check, Trash2, Plus } from 'lucide-react';
+import { X, Calendar, ChevronRight, Loader2, Check, Trash2, Plus, Tag } from 'lucide-react';
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -21,6 +21,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [details, setDetails] = useState('');
   const [subItems, setSubItems] = useState<string[]>([]);
   const [newSubItemText, setNewSubItemText] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [newTagText, setNewTagText] = useState('');
+  const [showTagInput, setShowTagInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -36,11 +39,13 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setDeadline(task.deadline || '今天, 17:00');
       setDetails(task.details || '');
       setSubItems(task.subItems || []);
+      setSelectedTags(task.tags || []);
     } else {
       setTitle('');
       setDeadline('今天, 17:00');
       setDetails('');
       setSubItems([]);
+      setSelectedTags([]);
     }
     const now = new Date();
     const year = now.getFullYear();
@@ -48,6 +53,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
     const day = String(now.getDate()).padStart(2, '0');
     setDatePickerValue(`${year}-${month}-${day}T17:00`);
     setNewSubItemText('');
+    setNewTagText('');
+    setShowTagInput(false);
     setIsSaving(false);
     setSavedSuccess(false);
   }, [task, isOpen]);
@@ -63,6 +70,22 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const handleRemoveSubItem = (index: number) => {
     setSubItems(subItems.filter((_, i) => i !== index));
   };
+
+  const handleAddTag = () => {
+    if (!newTagText.trim()) return;
+    const tag = newTagText.trim().startsWith('#') ? newTagText.trim() : `#${newTagText.trim()}`;
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags([...selectedTags, tag]);
+    }
+    setNewTagText('');
+    setShowTagInput(false);
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter((t) => t !== tag));
+  };
+
+  const PRESET_TAGS = ['#工作', '#个人', '#紧急', '#学习', '#项目清单', '#创意'];
 
   const handleUpdateSubItem = (index: number, val: string) => {
     const updated = [...subItems];
@@ -93,7 +116,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         badgeType: task ? task.badgeType : 'upcoming',
         accentColor: task ? task.accentColor : 'yellow',
         completed: task ? task.completed : false,
-        tags: task ? task.tags : (isProjectTask ? ['项目清单'] : ['#工作']),
+        tags: task ? task.tags : (selectedTags.length > 0 ? selectedTags : ['#工作']),
         createdAt: task ? task.createdAt : new Date().toISOString().split('T')[0],
       };
 
@@ -252,6 +275,96 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   className="w-full bg-transparent border-none text-xs font-semibold text-[#1b1c1a] focus:outline-none focus:ring-0 cursor-pointer"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Tag Selector */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-semibold text-[#444748] ml-1 uppercase tracking-wider">
+              标签选择
+            </label>
+
+            {/* 已选标签 */}
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#e8f8ee] text-[#005230] rounded-full text-xs font-semibold border border-[#95f7bb]/40"
+                  >
+                    <Tag className="w-3 h-3" />
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="w-4 h-4 rounded-full hover:bg-[#95f7bb]/40 flex items-center justify-center text-[#005230]/70 hover:text-[#005230] transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 预设标签 */}
+            <div className="flex flex-wrap gap-2">
+              {PRESET_TAGS.filter((t) => !selectedTags.includes(t)).map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    if (!selectedTags.includes(tag)) {
+                      setSelectedTags([...selectedTags, tag]);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#f4f4f0] text-[#444748] hover:bg-[#e9e8e4] hover:text-[#1b1c1a] transition-colors active:scale-95"
+                >
+                  + {tag}
+                </button>
+              ))}
+
+              {/* 自定义标签输入 / 添加按钮 */}
+              {showTagInput ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={newTagText}
+                    onChange={(e) => setNewTagText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    placeholder="标签名..."
+                    className="w-24 h-8 px-2.5 text-xs bg-white border border-[#c4c7c7] rounded-full focus:ring-1 focus:ring-[#006d41]"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="h-8 px-3 bg-[#1b1c1a] text-white text-xs font-semibold rounded-full hover:opacity-90 transition-all"
+                  >
+                    确定
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowTagInput(false); setNewTagText(''); }}
+                    className="h-8 w-8 rounded-full bg-[#efeeea] text-[#747878] hover:bg-[#e9e8e4] flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowTagInput(true)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-[#c4c7c7] text-[#747878] hover:border-[#006d41] hover:text-[#006d41] transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  自定义标签
+                </button>
+              )}
             </div>
           </div>
 
