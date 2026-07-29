@@ -1,0 +1,6 @@
+{
+  "name": "MindFlow",
+  "description": "极简心流笔记与任务追踪应用，支持闪记、任务追踪、结构库与私密保险箱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
