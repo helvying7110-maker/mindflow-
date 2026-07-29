@@ -1,13 +1,12 @@
 node_modules/
 build/
-dist/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
 
-# »º´æ
+# ï¿½ï¿½ï¿½ï¿½
 .npm-cache/
 *.tsbuildinfo
 
