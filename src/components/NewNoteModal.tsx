@@ -157,7 +157,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: title || content,
+          topic: title,
           content: content,
           mode: 'polish',
         }),
