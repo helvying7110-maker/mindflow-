@@ -22,6 +22,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// 健康检查 + 版本确认
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, version: "v3-staticdir", dir: __dirname });
+});
+
 // ====== Auth 接口 ======
 
 // 手机号转邮箱（与前端保持一致）
