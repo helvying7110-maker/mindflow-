@@ -1,9 +1,7 @@
 import express from "express";
-import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
@@ -120,33 +118,15 @@ app.post("/api/ai/inspire", async (req, res) => {
 });
 
 async function startServer() {
-  // 静态文件目录：server.cjs 打包在 dist/ 中，index.html 也在 dist/
-  const candidates = [
-    __dirname,                                          // 生产：server.cjs 在 dist/
-    path.join(process.cwd(), "dist"),                    // 开发：dist 是子目录
-    path.join(process.cwd()),                            // 兜底
-  ];
-  let staticDir = candidates.find(d => fs.existsSync(path.join(d, "index.html"))) || process.cwd();
+  // server.cjs 打包后位于 dist/，index.html 也在 dist/
+  // 所以 __dirname 就是 dist/ 目录
+  const staticDir = __dirname;
 
-  const isDev = !staticDir || process.env.NODE_ENV === "development";
-  // 开发模式下如果 dist 没有 index.html 就用 Vite
-  const hasBuilt = fs.existsSync(path.join(staticDir, "index.html"));
-
-  console.log("staticDir:", staticDir, "hasBuilt:", hasBuilt, "NODE_ENV:", process.env.NODE_ENV);
-
-  if (!hasBuilt && isDev) {
-    // 开发模式，用 Vite
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(staticDir));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(staticDir, "index.html"));
-    });
-  }
+  // 静态文件 + SPA fallback
+  app.use(express.static(staticDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`MindFlow server running on http://0.0.0.0:${PORT}`);
