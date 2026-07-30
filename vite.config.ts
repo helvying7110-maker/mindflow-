@@ -5,9 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/mindflow-/',
+    base: '/',
     build: {
-      outDir: 'docs',
+      outDir: 'dist',
     },
     plugins: [react(), tailwindcss()],
     resolve: {
