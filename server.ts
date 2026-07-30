@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
@@ -119,7 +120,7 @@ app.post("/api/ai/inspire", async (req, res) => {
 });
 
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !fs.existsSync(path.join(process.cwd(), "dist"))) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
