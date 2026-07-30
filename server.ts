@@ -120,30 +120,30 @@ app.post("/api/ai/inspire", async (req, res) => {
 });
 
 async function startServer() {
-  // 调试：输出运行环境
-  console.log("NODE_ENV:", process.env.NODE_ENV);
-  console.log("cwd:", process.cwd());
-  console.log("dist exists:", fs.existsSync(path.join(process.cwd(), "dist")));
-  console.log("__dirname:", __dirname);
+  // 静态文件目录：server.cjs 打包在 dist/ 中，index.html 也在 dist/
+  const candidates = [
+    __dirname,                                          // 生产：server.cjs 在 dist/
+    path.join(process.cwd(), "dist"),                    // 开发：dist 是子目录
+    path.join(process.cwd()),                            // 兜底
+  ];
+  let staticDir = candidates.find(d => fs.existsSync(path.join(d, "index.html"))) || process.cwd();
 
-  // 静态文件目录：打包后 server.cjs 在 dist/ 中，所以用 __dirname
-  // 本地开发时 server.ts 在根目录，dist/ 是子目录
-  const staticDir = fs.existsSync(path.join(__dirname, "index.html"))
-    ? __dirname   // 生产：server.cjs 和 index.html 在同一个 dist/ 目录
-    : path.join(process.cwd(), "dist");  // 开发：dist 是子目录
+  const isDev = !staticDir || process.env.NODE_ENV === "development";
+  // 开发模式下如果 dist 没有 index.html 就用 Vite
+  const hasBuilt = fs.existsSync(path.join(staticDir, "index.html"));
 
-  const isDev = process.env.NODE_ENV !== "production" && !fs.existsSync(path.join(__dirname, "index.html"));
+  console.log("staticDir:", staticDir, "hasBuilt:", hasBuilt, "NODE_ENV:", process.env.NODE_ENV);
 
-  if (isDev) {
+  if (!hasBuilt && isDev) {
+    // 开发模式，用 Vite
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    console.log("Serving static files from:", staticDir);
     app.use(express.static(staticDir));
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(staticDir, "index.html"));
     });
   }
