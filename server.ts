@@ -12,7 +12,7 @@ const supabaseAdmin = createClient(process.env.VITE_SUPABASE_URL!, process.env.S
 
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 app.use(express.json());
 // CORS（前后端分离部署时需要）
@@ -120,17 +120,31 @@ app.post("/api/ai/inspire", async (req, res) => {
 });
 
 async function startServer() {
-  if (process.env.NODE_ENV !== "production" && !fs.existsSync(path.join(process.cwd(), "dist"))) {
+  // 调试：输出运行环境
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("cwd:", process.cwd());
+  console.log("dist exists:", fs.existsSync(path.join(process.cwd(), "dist")));
+  console.log("__dirname:", __dirname);
+
+  // 静态文件目录：打包后 server.cjs 在 dist/ 中，所以用 __dirname
+  // 本地开发时 server.ts 在根目录，dist/ 是子目录
+  const staticDir = fs.existsSync(path.join(__dirname, "index.html"))
+    ? __dirname   // 生产：server.cjs 和 index.html 在同一个 dist/ 目录
+    : path.join(process.cwd(), "dist");  // 开发：dist 是子目录
+
+  const isDev = process.env.NODE_ENV !== "production" && !fs.existsSync(path.join(__dirname, "index.html"));
+
+  if (isDev) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    console.log("Serving static files from:", staticDir);
+    app.use(express.static(staticDir));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      res.sendFile(path.join(staticDir, "index.html"));
     });
   }
 
